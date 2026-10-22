@@ -1,0 +1,7 @@
+.venv
+.vscode
+.directory
+app/api
+app/__pycache__
+app/chroma_langchain_db
+app/services/__pycache__
