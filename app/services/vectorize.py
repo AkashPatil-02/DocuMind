@@ -1,6 +1,8 @@
+import chromadb
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from chromadb.config import Settings
 
 
 DB_LOCATION = "./chroma_langchain_db"
@@ -9,13 +11,21 @@ COLLECTION_NAME = "pdf_extracts"
 embeddings = OllamaEmbeddings(model="mxbai-embed-large")
 
 
+client = chromadb.PersistentClient(
+    path="./chroma_langchain_db",
+    settings=Settings(allow_reset=True)
+)
 
+def reset_db():
+    client.reset()
+    return {"status":"complete"}
 
 def get_vector_store() ->Chroma:
     return Chroma(
         collection_name=COLLECTION_NAME,
         persist_directory=DB_LOCATION,
         embedding_function=embeddings,
+        client=client
     )
 
 

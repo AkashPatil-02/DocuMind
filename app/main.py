@@ -1,10 +1,11 @@
 from uuid import uuid4
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from pydantic import BaseModel, Field
 from services.ingestion import extractPages
 from services.chunking import chunkPages
-from services.vectorize import (get_vector_store,retrieve,vectorize)
+from services.vectorize import (get_vector_store,retrieve,vectorize,reset_db)
 from models.search import SearchRequest 
+from models.ask import AskRequest
+from services.olllama import (llm, prompt)
 
 app = FastAPI(title="DocuMind API")
 db = get_vector_store()
@@ -66,7 +67,7 @@ def search_documents(request: SearchRequest):
         db,
         k=request.k,
     )
-
+    print(results)
     return {
         "question": request.question,
         "resultCount": len(results),
@@ -77,4 +78,60 @@ def search_documents(request: SearchRequest):
             }
             for result in results
         ],
+    }
+    
+    
+@app.post("/ask")
+async def getResponse(request: AskRequest):
+    results = retrieve(
+        request.question,
+        db,
+        k=request.k,
+    )
+    print("results:\n")
+    print(results)
+    if not results:
+        return {
+            "question": request.question,
+            "answer": (
+                "I couldn't find relevant information "
+                "in the indexed documents."
+            ),
+            "sources": [],
+        }
+    
+    context = "\n\n".join(
+        f"Page {result.metadata.get('page', 'unknown')}:\n"
+        f"{result.page_content}"
+        for result in results
+    )
+    
+    chain = prompt | llm
+    
+    response = chain.invoke({
+        "context": context,
+        "question": request.question,
+    })
+    
+    return {
+        "question": request.question,
+        "answer": response.content,
+        "sources": [
+            {
+                "page": result.metadata.get("page"),
+                "source_id": result.metadata.get("source"),
+                "content": result.page_content,
+            }
+            for result in results
+        ],
+    }
+    
+@app.delete("/reset_db")
+def reset():
+    status = reset_db()
+    if status["status"]!="complete":
+        raise HTTPException(status_code=500,detail="Failed to reset")
+    
+    return{
+        "message":"DB reset complete"
     }
