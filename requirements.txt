@@ -68,6 +68,7 @@ pybase64==1.5.1
 pydantic==2.14.1
 pydantic-settings==2.16.1
 pydantic_core==2.50.1
+pydantic[email]
 Pygments==2.21.0
 pymupdf==2.0
 pymupdf4llm==2.0
@@ -107,3 +108,9 @@ websockets==17.3
 xxhash==4.0.2
 yarl==1.25.1
 zstandard==0.25.0
+pymysql
+cryptography
+python-jose[cryptography]
+passlib[bcrypt]
+mysql-connector-python
+alembic 

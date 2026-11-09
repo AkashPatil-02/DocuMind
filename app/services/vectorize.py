@@ -30,7 +30,7 @@ def get_vector_store() ->Chroma:
 
 
 def vectorize(
-    chunks: list[dict], vector_store: Chroma, source_id: str = "document",)->None:
+    chunks: list[dict], vector_store: Chroma, source_id: str = "document", user_id: int = None)->None:
     documents = []
     ids = []
 
@@ -38,13 +38,18 @@ def vectorize(
         page = chunk["page"]
         start_index = chunk["start_index"]
 
+        metadata = {
+            "page": page,
+            "start_index": start_index,
+            "source": source_id,
+        }
+        
+        if user_id is not None:
+            metadata["user_id"] = str(user_id)
+
         document = Document(
             page_content=chunk["text"],
-            metadata={
-                "page": page,
-                "start_index": start_index,
-                "source": source_id,
-            },
+            metadata=metadata,
         )
         
         documents.append(document)
@@ -55,14 +60,20 @@ def vectorize(
 
 
 def retrieve(
-    question: str, vector_store: Chroma, k: int = 5, source_id: str | None = None) -> list[Document]:
+    question: str, vector_store: Chroma, k: int = 5, source_id: str | None = None, user_id: int = None) -> list[Document]:
     
     search_kwargs = {"k": k}
+    filter_dict = {}
      
     if source_id is not None:
-        search_kwargs["filter"] = {
-            "source": source_id
-        }
+        filter_dict["source"] = source_id
+    
+    if user_id is not None:
+        filter_dict["user_id"] = str(user_id)
+    
+    if filter_dict:
+        search_kwargs["filter"] = filter_dict
+    
     retriever = vector_store.as_retriever(
         search_kwargs=search_kwargs
     )

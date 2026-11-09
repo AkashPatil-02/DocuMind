@@ -2,7 +2,7 @@ from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 
 llm = ChatOllama(
-    model="llama3.2:latest",
+    model="qwen2.5-coder:7b",
     validate_model_on_init=True,
     temperature=0.2,
 )

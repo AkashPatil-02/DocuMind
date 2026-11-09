@@ -5,3 +5,10 @@ app/api
 app/__pycache__
 app/chroma_langchain_db
 app/services/__pycache__
+app/models/__pycache__
+.env
+app/alembic.ini
+frontend/.env.local
+frontend/node_modules
+frontend/public
+.env.example

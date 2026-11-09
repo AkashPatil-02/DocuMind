@@ -1,14 +1,30 @@
 from uuid import uuid4
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
+from sqlalchemy.orm import Session
 from services.ingestion import extractPages
 from services.chunking import chunkPages
 from services.vectorize import (get_vector_store,retrieve,vectorize,reset_db)
 from models.search import SearchRequest 
 from models.ask import AskRequest
 from services.olllama import (llm, prompt)
+from database import get_db
+from models.user import User
+from models.document import Document
+from auth.utils import get_current_user
+from api.auth import router as auth_router
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="DocuMind API")
+app.include_router(auth_router)
 db = get_vector_store()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def health():
@@ -16,7 +32,11 @@ def health():
 
 
 @app.post("/documents")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db)
+):
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=400,
@@ -49,7 +69,18 @@ async def upload_document(file: UploadFile = File(...)):
     source_id = str(uuid4())
     print(source_id)
 
-    vectorize(chunks, db, source_id=source_id)
+    vectorize(chunks, db    , source_id=source_id, user_id=current_user.id)
+    
+    new_doc = Document(
+        user_id=current_user.id,
+        source_id=source_id,
+        filename=file.filename,
+        pages=len(pages),
+        chunk_count=len(chunks)
+    )
+    session.add(new_doc)
+    session.commit()
+    session.refresh(new_doc)
     
     return {
         "message": "Document indexed successfully",
@@ -60,12 +91,17 @@ async def upload_document(file: UploadFile = File(...)):
     }
 
 @app.post("/search")
-def search_documents(request: SearchRequest):
-    print(request)
+async def search_documents(
+    request: SearchRequest,
+    current_user: User = Depends(get_current_user)
+):
+    if current_user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="user not authenticated")
     results = retrieve(
         request.question,
         db,
         k=request.k,
+        user_id=current_user.id
     )
     print(results)
     return {
@@ -82,11 +118,16 @@ def search_documents(request: SearchRequest):
     
     
 @app.post("/ask")
-async def getResponse(request: AskRequest):
+async def getResponse(
+    request: AskRequest,
+    current_user: User = Depends(get_current_user)
+):
     results = retrieve(
         request.question,
         db,
         k=request.k,
+        user_id=current_user.id,
+        source_id=request.source_id        
     )
     print("results:\n")
     print(results)
