@@ -9,7 +9,6 @@
 ![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-black?logo=ollama)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-> **Demo:** *(add a GIF/screenshot of the dashboard here once deployed)*
 
 ---
 
@@ -351,6 +350,3 @@ DocuMind runs fully self-hosted: FastAPI + MySQL + Ollama + ChromaDB on the back
 - [ ] Docker Compose deployment + CI
 - [ ] Hosted-LLM option for serverless deployment
 
-## 📄 License
-
-MIT — see [LICENSE](LICENSE) *(add a LICENSE file if publishing publicly)*
