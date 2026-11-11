@@ -19,6 +19,15 @@ interface AskResponse {
   sources: { page: number | null; source_id: string; content: string }[];
 }
 
+interface DocumentItem {
+  id: number;
+  sourceId: string;
+  fileName: string;
+  pages: number | null;
+  chunkCount: number | null;
+  uploadedAt: string | null;
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -28,6 +37,8 @@ export default function Dashboard() {
 
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
+
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
 
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
@@ -40,8 +51,11 @@ export default function Dashboard() {
       return;
     }
 
-    apiRequest("/auth/me")
-      .then(setUser)
+    Promise.all([apiRequest("/auth/me"), apiRequest("/documents")])
+      .then(([me, docs]) => {
+        setUser(me);
+        setDocuments(docs.documents);
+      })
       .catch(() => {
         clearTokens();
         router.replace("/signin");
@@ -68,6 +82,8 @@ export default function Dashboard() {
       setUploadMessage(
         `Indexed "${result.fileName}" — ${result.pages} pages, ${result.chunkCount} chunks`
       );
+      const docs = await apiRequest("/documents");
+      setDocuments(docs.documents);
     } catch (err) {
       setUploadMessage(
         err instanceof Error ? err.message : "Upload failed"
@@ -171,6 +187,38 @@ export default function Dashboard() {
               <p className="text-sm text-gray-300 mt-3">{uploadMessage}</p>
             )}
           </div>
+        </section>
+
+        <section>
+          <h1 className="text-2xl font-bold mb-4">Your documents</h1>
+          {documents.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              No documents uploaded yet.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {documents.map((doc) => (
+                <li
+                  key={doc.id}
+                  className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText size={18} className="text-orange-500 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {doc.fileName}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {doc.pages ?? "?"} pages · {doc.chunkCount ?? "?"} chunks
+                        {doc.uploadedAt &&
+                          ` · ${new Date(doc.uploadedAt).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section>

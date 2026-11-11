@@ -67,7 +67,6 @@ async def upload_document(
 
     chunks = chunkPages(pages)
     source_id = str(uuid4())
-    print(source_id)
 
     vectorize(chunks, db    , source_id=source_id, user_id=current_user.id)
     
@@ -90,6 +89,32 @@ async def upload_document(
         "chunkCount": len(chunks),
     }
 
+@app.get("/documents")
+def list_documents(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db)
+):
+    documents = (
+        session.query(Document)
+        .filter(Document.user_id == current_user.id)
+        .order_by(Document.uploaded_at.desc())
+        .all()
+    )
+    return {
+        "documents": [
+            {
+                "id": doc.id,
+                "sourceId": doc.source_id,
+                "fileName": doc.filename,
+                "pages": doc.pages,
+                "chunkCount": doc.chunk_count,
+                "uploadedAt": doc.uploaded_at,
+            }
+            for doc in documents
+        ]
+    }
+
+
 @app.post("/search")
 async def search_documents(
     request: SearchRequest,
@@ -103,7 +128,6 @@ async def search_documents(
         k=request.k,
         user_id=current_user.id
     )
-    print(results)
     return {
         "question": request.question,
         "resultCount": len(results),
@@ -129,8 +153,6 @@ async def getResponse(
         user_id=current_user.id,
         source_id=request.source_id        
     )
-    print("results:\n")
-    print(results)
     if not results:
         return {
             "question": request.question,
